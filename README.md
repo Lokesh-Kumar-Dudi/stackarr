@@ -1,31 +1,5 @@
 # Media Server Stack — Setup Guide
 
-## Architecture
-Each service runs on its own port. No reverse proxy.
-
-```
-:7575  → Homarr      (dashboard)
-:8080  → qBittorrent (downloads)
-:9696  → Prowlarr    (indexers)
-:8989  → Sonarr      (TV shows)
-:7878  → Radarr      (movies)
-:8096  → Jellyfin    (streaming)
-:9443  → Portainer   (container management)
-```
-
-## Repo Structure
-```
-/Users/raven/dev/personal/stackarr/
-├── docker-compose.yml    # Full stack definition
-├── .env                  # Secrets & config (NOT committed)
-├── .env.example          # Template for .env
-├── servers.md            # Quick service URL reference
-└── docs.md               # This guide
-```
-
-**Key design:** Secrets (VPN keys, passwords) live in `.env` which is gitignored.
-Homarr config is persisted in `~/media/config/homarr` (Docker volume).
-
 ## Quick Start (clone and run)
 ```bash
 # 1. Clone the repo
@@ -54,7 +28,6 @@ open http://localhost:7575
 | Sonarr       | 8989  | http://localhost:8989        |
 | Radarr       | 7878  | http://localhost:7878        |
 | Jellyfin     | 8096  | http://localhost:8096        |
-| Portainer    | 9443  | https://localhost:9443       |
 
 ## Storage Layout (~/media)
 - `~/media/downloads` — qBittorrent downloads
@@ -85,8 +58,10 @@ VPN_COUNTRY=United States
 PUID=501
 PGID=20
 
-# Storage
+# Storage for macOS/linux
 MEDIA_PATH=/Users/raven/media
+# On windows
+# MEDIA_PATH=C:\Users\raven\media or Z:\media
 ```
 
 ## qBittorrent Auth
@@ -126,13 +101,7 @@ cd /Users/raven/dev/personal/stackarr
 docker compose up -d
 ```
 
-### Step 4: Set Up Portainer — Container Management (localhost:9443)
-1. Visit `https://localhost:9443` (accept the self-signed cert)
-2. Create an admin username and password
-3. Select **"Get Started"** to connect to your local Docker environment
-4. You can now start/stop/restart any container from the Portainer UI
-
-### Step 5: Set Up qBittorrent (localhost:8080)
+### Step 4: Set Up qBittorrent (localhost:8080)
 1. Get the temporary password:
    ```bash
    docker logs qbittorrent 2>&1 | grep "temporary password"
@@ -141,12 +110,12 @@ docker compose up -d
 3. Go to **Tools → Options → Web UI** and set a **permanent password** immediately
 4. This prevents the password from changing on every restart
 
-### Step 6: Set Up Prowlarr — Indexers (localhost:9696)
+### Step 5: Set Up Prowlarr — Indexers (localhost:9696)
 1. Go to **Indexers → Add Indexer**
 2. Search and add indexers (e.g. 1337x, TorrentGalaxy, YTS, EZTV)
 3. Test each one after adding — if test fails, your ISP may be blocking it (try VPN)
 
-### Step 7: Connect Prowlarr to Sonarr & Radarr
+### Step 6: Connect Prowlarr to Sonarr & Radarr
 In Prowlarr → **Settings → Apps**:
 
 **Add Sonarr:**
@@ -159,7 +128,7 @@ In Prowlarr → **Settings → Apps**:
 - Radarr Server: `http://radarr:7878`
 - API Key: get from Radarr → Settings → General → API Key
 
-### Step 8: Set Up Sonarr — TV Shows (localhost:8989)
+### Step 7: Set Up Sonarr — TV Shows (localhost:8989)
 1. Go to **Settings → Download Clients → Add → qBittorrent**
    - Host: `gluetun`
    - Port: `8080`
@@ -168,7 +137,7 @@ In Prowlarr → **Settings → Apps**:
 2. Go to **Settings → Media Management → Root Folders → Add** → `/tv`
 3. To add a show: **Add New** → search → select → set root folder to `/tv` → pick quality profile → enable "Start search for missing episodes" → Add Series
 
-### Step 9: Set Up Radarr — Movies (localhost:7878)
+### Step 8: Set Up Radarr — Movies (localhost:7878)
 1. Go to **Settings → Download Clients → Add → qBittorrent**
    - Host: `gluetun`
    - Port: `8080`
@@ -177,7 +146,7 @@ In Prowlarr → **Settings → Apps**:
 2. Go to **Settings → Media Management → Root Folders → Add** → `/movies`
 3. To add a movie: **Add New** → search → select → set root folder to `/movies` → pick quality profile → Add Movie
 
-### Step 10: Set Up Jellyfin — Streaming (localhost:8096)
+### Step 9: Set Up Jellyfin — Streaming (localhost:8096)
 1. Complete the setup wizard:
    - Set language
    - Create admin username/password
@@ -187,7 +156,7 @@ In Prowlarr → **Settings → Apps**:
    - Finish wizard
 2. If accessing from other devices on your network, use `http://<your-mac-ip>:8096`
 
-### Step 11: Improve Jellyfin Metadata & Thumbnails
+### Step 10: Improve Jellyfin Metadata & Thumbnails
 1. **Dashboard → Libraries** → edit each library:
    - Enable **TheMovieDb** under Metadata downloaders
    - Enable **TheMovieDb** and **FanArt** under Image fetchers
@@ -196,13 +165,38 @@ In Prowlarr → **Settings → Apps**:
 4. **Dashboard → Libraries** → three dots on each library → **Scan Library**
 5. Optional: install **Open Subtitles** plugin for automatic subtitles
 
-### Step 12: Set Up Homarr — Dashboard (localhost:7575)
+### Step 11: Set Up Homarr — Dashboard (localhost:7575)
 1. Visit `http://localhost:7575`
 2. Complete the initial setup (create admin account)
 3. Add service tiles by clicking **Edit mode → Add tile**
 4. Homarr can auto-detect running Docker containers via the mounted Docker socket
 
-### Step 13: Searching & Downloading
+#### Fixing Homarr status checks
+If Homarr can open an app but shows it as offline, the usual cause is that the app URL is set to `localhost`.
+Homarr performs pings from inside the `homarr` container, so `localhost` points to Homarr itself, not to Sonarr, Radarr, or the VPN-routed services.
+
+Use these values when creating apps in Homarr:
+
+| Service      | Open URL from browser                         | Ping URL from Homarr container |
+|--------------|-----------------------------------------------|--------------------------------|
+| Homarr       | `http://localhost:7575`                       | `http://homarr:7575`           |
+| qBittorrent  | `http://localhost:8080`                       | `http://gluetun:8080`          |
+| Prowlarr     | `http://localhost:9696`                       | `http://gluetun:9696`          |
+| Sonarr       | `http://localhost:8989`                       | `http://sonarr:8989`           |
+| Radarr       | `http://localhost:7878`                       | `http://radarr:7878`           |
+| Jellyfin     | `http://localhost:8096`                       | `http://jellyfin:8096`         |
+
+If you open Homarr from another device on your network, replace `localhost` in the browser URL with your server's LAN IP or hostname.
+
+#### Adding gluetun to Homarr
+`gluetun` does not provide a normal web dashboard, so it is best added through Homarr's **Docker** integration instead of as a standard app tile.
+
+1. In Homarr, open **Tools → Docker** and confirm the Docker integration is available.
+2. Add the **Docker stats** widget to your board.
+3. Use that widget to monitor and control the `gluetun` container alongside the rest of the stack.
+
+
+### Step 12: Searching & Downloading
 **TV Shows (Sonarr):**
 - Add New → search for show → add with desired quality
 - To download a specific season: click the show → expand the season → click search icon next to the season header
@@ -212,7 +206,7 @@ In Prowlarr → **Settings → Apps**:
 - Add New → search for movie → add with desired quality
 - Radarr will automatically search indexers and send to qBittorrent
 
-### Step 14: Watching
+### Step 13: Watching
 - Open Jellyfin at `http://localhost:8096` (or `http://<your-mac-ip>:8096` from other devices)
 - Libraries auto-detect new downloads after Sonarr/Radarr organize them
 - Use Jellyfin apps on phone/TV/browser to stream
@@ -225,8 +219,7 @@ In Prowlarr → **Settings → Apps**:
 | `docker-compose.yml` | Full stack definition | Yes |
 | `.env` | Secrets & config | **No** (gitignored) |
 | `.env.example` | Template for .env | Yes |
-| `servers.md` | Quick service URL reference | Yes |
-| `docs.md` | This guide | Yes |
+| `README.md` | This guide | Yes |
 
 ## Troubleshooting
 - **Sonarr "restart required" banner**: often cosmetic, test API key with curl to verify it works
@@ -238,5 +231,4 @@ In Prowlarr → **Settings → Apps**:
   ```
 - **To fully reset Jellyfin**: `docker stop jellyfin && rm -rf ~/media/config/jellyfin && docker start jellyfin`
 - **qBittorrent IP ban** from failed logins: `docker restart qbittorrent`
-- **Portainer**: uses HTTPS on port 9443 — accept the self-signed certificate warning
 - **VPN not connecting**: verify `VPN_WIREGUARD_KEY` in `.env` is the WireGuard private key from ProtonVPN (not the public key)

@@ -111,17 +111,6 @@ services:
       - "7575:7575"
     restart: unless-stopped
 
-  # ── Container Management ───────────────────────────────────────
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    volumes:
-      - ${MEDIA_PATH}/config/portainer:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "9443:9443"
-    restart: unless-stopped
-
   # ── Media Streaming Server ─────────────────────────────────────
   jellyfin:
     image: jellyfin/jellyfin:latest
