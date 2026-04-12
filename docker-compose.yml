@@ -1,5 +1,5 @@
 services:
-# ── VPN Container (optional) ───────────────────────────────────
+  # ── VPN Gateway (all traffic routed through ProtonVPN) ─────────
   gluetun:
     image: qmcgaw/gluetun
     container_name: gluetun
@@ -7,23 +7,32 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${VPN_WIREGUARD_KEY}
       - SERVER_COUNTRIES=${VPN_COUNTRY}
+      - DOT=off
+      - BLOCK_MALICIOUS=off
+      - BLOCK_SURVEILLANCE=off
+      - BLOCK_ADS=off
+      - DNS_PLAINTEXT_ADDRESS=1.1.1.1
     ports:
+      # qBittorrent
       - "8080:8080"
       - "6881:6881"
       - "6881:6881/udp"
+      # Prowlarr
+      - "9696:9696"
     volumes:
       - ${MEDIA_PATH}/config/gluetun:/gluetun
-    profiles:
-      - vpn
     restart: unless-stopped
 
-  # ── Download Client (VPN) ──────────────────────────────────────
-  qbittorrent-vpn:
+  # ── Download Client (via VPN) ──────────────────────────────────
+  qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     network_mode: "service:gluetun"
@@ -38,42 +47,22 @@ services:
     volumes:
       - ${MEDIA_PATH}/config/qbittorrent:/config
       - ${MEDIA_PATH}/downloads:/downloads
-    profiles:
-      - vpn
     restart: unless-stopped
 
-  # ── Download Client (no VPN) ───────────────────────────────────
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=America/New_York
-      - WEBUI_PORT=8080
-    volumes:
-      - ${MEDIA_PATH}/config/qbittorrent:/config
-      - ${MEDIA_PATH}/downloads:/downloads
-    ports:
-      - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
-    profiles:
-      - no-vpn
-    restart: unless-stopped
-
-  # ── Indexer Manager ────────────────────────────────────────────
+  # ── Indexer Manager (via VPN) ──────────────────────────────────
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=America/New_York
     volumes:
       - ${MEDIA_PATH}/config/prowlarr:/config
-    ports:
-      - "9696:9696"
     restart: unless-stopped
 
   # ── TV Shows ───────────────────────────────────────────────────
