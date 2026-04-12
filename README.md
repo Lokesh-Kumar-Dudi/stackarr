@@ -37,10 +37,8 @@ cp .env.example .env   # then edit with your values
 # 3. Create media directories
 mkdir -p ~/media/{config,downloads,movies,tv}
 
-# 4. Start the stack
-docker compose --profile no-vpn up -d
-# or with VPN:
-docker compose --profile vpn up -d
+# 4. Start the stack (all traffic routed through ProtonVPN)
+docker compose up -d
 
 # 5. Open dashboard
 open http://localhost:7575
@@ -69,16 +67,17 @@ open http://localhost:7575
 - TV Shows → `/data/tv`
 
 ## Container Networking (IMPORTANT)
-Services must reference each other by **container/service name**, NOT `localhost`:
-- qBittorrent from Radarr/Sonarr: `qbittorrent:8080` (no-vpn) or `gluetun:8080` (vpn)
+Services must reference each other by **container/service name**, NOT `localhost`.
+qBittorrent and Prowlarr run inside gluetun's network, so use `gluetun` as their host name:
+- qBittorrent from Radarr/Sonarr: `gluetun:8080`
 - Sonarr from Prowlarr: `http://sonarr:8989`
 - Radarr from Prowlarr: `http://radarr:7878`
-- Prowlarr from Sonarr/Radarr: `http://prowlarr:9696`
+- Prowlarr from Sonarr/Radarr: `http://gluetun:9696`
 
 ## .env Variables
 ```bash
-# VPN — ProtonVPN WireGuard credentials
-# Get your WireGuard key from: https://account.proton.me/u/0/vpn/WireGuard
+# ProtonVPN WireGuard credentials (required)
+# Get your key at: https://account.proton.me/u/0/vpn/WireGuard
 VPN_WIREGUARD_KEY=your_protonvpn_wireguard_private_key
 VPN_COUNTRY=United States
 
@@ -116,7 +115,7 @@ Add in Prowlarr → Indexers:
   mkdir -p ~/media/{config,downloads,movies,tv}
   ```
 
-### Step 2: Configure VPN (optional)
+### Step 2: Configure ProtonVPN (required)
 - Go to https://account.proton.me/u/0/vpn/WireGuard
 - Generate a WireGuard key pair and copy the **Private Key**
 - Edit `.env` and fill in `VPN_WIREGUARD_KEY` and `VPN_COUNTRY`
@@ -124,12 +123,7 @@ Add in Prowlarr → Indexers:
 ### Step 3: Start the Stack
 ```bash
 cd /Users/raven/dev/personal/stackarr
-
-# Without VPN:
-docker compose --profile no-vpn up -d
-
-# With VPN:
-docker compose --profile vpn up -d
+docker compose up -d
 ```
 
 ### Step 4: Set Up Portainer — Container Management (localhost:9443)
@@ -156,18 +150,18 @@ docker compose --profile vpn up -d
 In Prowlarr → **Settings → Apps**:
 
 **Add Sonarr:**
-- Prowlarr Server: `http://prowlarr:9696`
+- Prowlarr Server: `http://gluetun:9696`
 - Sonarr Server: `http://sonarr:8989`
 - API Key: get from Sonarr → Settings → General → API Key
 
 **Add Radarr:**
-- Prowlarr Server: `http://prowlarr:9696`
+- Prowlarr Server: `http://gluetun:9696`
 - Radarr Server: `http://radarr:7878`
 - API Key: get from Radarr → Settings → General → API Key
 
 ### Step 8: Set Up Sonarr — TV Shows (localhost:8989)
 1. Go to **Settings → Download Clients → Add → qBittorrent**
-   - Host: `qbittorrent` (no-vpn) or `gluetun` (vpn)
+   - Host: `gluetun`
    - Port: `8080`
    - Username: `admin`
    - Password: your permanent qBittorrent password
@@ -176,7 +170,7 @@ In Prowlarr → **Settings → Apps**:
 
 ### Step 9: Set Up Radarr — Movies (localhost:7878)
 1. Go to **Settings → Download Clients → Add → qBittorrent**
-   - Host: `qbittorrent` (no-vpn) or `gluetun` (vpn)
+   - Host: `gluetun`
    - Port: `8080`
    - Username: `admin`
    - Password: your permanent qBittorrent password
