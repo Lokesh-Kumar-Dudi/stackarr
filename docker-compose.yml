@@ -1,5 +1,5 @@
 services:
-  # ── VPN Gateway (all traffic routed through ProtonVPN) ─────────
+  # ── VPN Gateway (all traffic routed through Surfshark) ─────────
   gluetun:
     image: qmcgaw/gluetun
     container_name: gluetun
@@ -11,9 +11,10 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     environment:
-      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_SERVICE_PROVIDER=surfshark
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${VPN_WIREGUARD_KEY}
+      - WIREGUARD_ADDRESSES=${VPN_WIREGUARD_ADDRESSES}
       - SERVER_COUNTRIES=${VPN_COUNTRY}
       - DOT=off
       - BLOCK_MALICIOUS=off

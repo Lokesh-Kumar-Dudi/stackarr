@@ -11,7 +11,7 @@ cp .env.example .env   # then edit with your values
 # 3. Create media directories
 mkdir -p ~/media/{config,downloads,movies,tv}
 
-# 4. Start the stack (all traffic routed through ProtonVPN)
+# 4. Start the stack (all traffic routed through Surfshark)
 docker compose up -d
 
 # 5. Open dashboard
@@ -49,9 +49,11 @@ qBittorrent and Prowlarr run inside gluetun's network, so use `gluetun` as their
 
 ## .env Variables
 ```bash
-# ProtonVPN WireGuard credentials (required)
-# Get your key at: https://account.proton.me/u/0/vpn/WireGuard
-VPN_WIREGUARD_KEY=your_protonvpn_wireguard_private_key
+# Surfshark WireGuard credentials (required)
+# Generate at: https://my.surfshark.com/vpn/manual-setup/main/wireguard
+# Open the downloaded .conf — copy PrivateKey and Address below.
+VPN_WIREGUARD_KEY=your_surfshark_wireguard_private_key
+VPN_WIREGUARD_ADDRESSES=10.14.0.2/16
 VPN_COUNTRY=United States
 
 # File permissions (match your local user)
@@ -90,10 +92,15 @@ Add in Prowlarr → Indexers:
   mkdir -p ~/media/{config,downloads,movies,tv}
   ```
 
-### Step 2: Configure ProtonVPN (required)
-- Go to https://account.proton.me/u/0/vpn/WireGuard
-- Generate a WireGuard key pair and copy the **Private Key**
-- Edit `.env` and fill in `VPN_WIREGUARD_KEY` and `VPN_COUNTRY`
+### Step 2: Configure Surfshark (required)
+- Go to https://my.surfshark.com/vpn/manual-setup/main/wireguard
+- Click **I don't have a key pair** → generate one (give it a name)
+- Pick a location, then click **Download .conf** for that server
+- Open the `.conf` file — it contains a `[Interface]` block with `PrivateKey = ...` and `Address = ...`
+- Edit `.env`:
+  - `VPN_WIREGUARD_KEY` = the `PrivateKey` value
+  - `VPN_WIREGUARD_ADDRESSES` = the `Address` value (e.g. `10.14.0.2/16`)
+  - `VPN_COUNTRY` = the country you picked (e.g. `United States`)
 
 ### Step 3: Start the Stack
 ```bash
@@ -231,4 +238,4 @@ If you open Homarr from another device on your network, replace `localhost` in t
   ```
 - **To fully reset Jellyfin**: `docker stop jellyfin && rm -rf ~/media/config/jellyfin && docker start jellyfin`
 - **qBittorrent IP ban** from failed logins: `docker restart qbittorrent`
-- **VPN not connecting**: verify `VPN_WIREGUARD_KEY` in `.env` is the WireGuard private key from ProtonVPN (not the public key)
+- **VPN not connecting**: verify `VPN_WIREGUARD_KEY` in `.env` is the WireGuard **PrivateKey** from the Surfshark `.conf` (not the public key), and that `VPN_WIREGUARD_ADDRESSES` matches the `Address` line from the same `.conf`
