@@ -54,7 +54,6 @@ qBittorrent and Prowlarr run inside gluetun's network, so use `gluetun` as their
 # Open the downloaded .conf — copy PrivateKey and Address below.
 VPN_WIREGUARD_KEY=your_surfshark_wireguard_private_key
 VPN_WIREGUARD_ADDRESSES=10.14.0.2/16
-VPN_COUNTRY=United States
 
 # File permissions (match your local user)
 PUID=501
@@ -100,7 +99,8 @@ Add in Prowlarr → Indexers:
 - Edit `.env`:
   - `VPN_WIREGUARD_KEY` = the `PrivateKey` value
   - `VPN_WIREGUARD_ADDRESSES` = the `Address` value (e.g. `10.14.0.2/16`)
-  - `VPN_COUNTRY` = the country you picked (e.g. `United States`)
+
+gluetun will pick any available Surfshark server. To pin a location, add `SERVER_COUNTRIES=...` (or `SERVER_CITIES=...`) to the `gluetun` service in `docker-compose.yml`.
 
 ### Step 3: Start the Stack
 ```bash
