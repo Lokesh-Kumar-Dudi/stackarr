@@ -7,19 +7,17 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
+    networks:
+      default:
+        aliases:
+          - prowlarr
+          - qbittorrent
+          - flaresolverr
     environment:
       - VPN_SERVICE_PROVIDER=surfshark
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${VPN_WIREGUARD_KEY}
       - WIREGUARD_ADDRESSES=${VPN_WIREGUARD_ADDRESSES}
-      - DOT=off
-      - BLOCK_MALICIOUS=off
-      - BLOCK_SURVEILLANCE=off
-      - BLOCK_ADS=off
-      - DNS_PLAINTEXT_ADDRESS=1.1.1.1
     ports:
       # qBittorrent
       - "8080:8080"
