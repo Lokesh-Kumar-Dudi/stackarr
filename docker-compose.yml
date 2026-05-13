@@ -27,6 +27,8 @@ services:
       - "6881:6881/udp"
       # Prowlarr
       - "9696:9696"
+      # FlareSolverr
+      - "8191:8191"
     volumes:
       - ${MEDIA_PATH}/config/gluetun:/gluetun
     restart: unless-stopped
@@ -63,6 +65,19 @@ services:
       - TZ=America/New_York
     volumes:
       - ${MEDIA_PATH}/config/prowlarr:/config
+    restart: unless-stopped
+
+  # ── Cloudflare Bypass (via VPN) ────────────────────────────────
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/New_York
     restart: unless-stopped
 
   # ── TV Shows ───────────────────────────────────────────────────
@@ -125,4 +140,55 @@ services:
       - ${MEDIA_PATH}/tv:/data/tv
     ports:
       - "8096:8096"
+    restart: unless-stopped
+
+  # ── Request Management ─────────────────────────────────────────
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    init: true
+    container_name: seerr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/New_York
+    volumes:
+      - ${MEDIA_PATH}/config/seerr:/app/config
+    ports:
+      - "5055:5055"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/settings/public || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Container Management ───────────────────────────────────────
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${MEDIA_PATH}/config/portainer:/data
+    ports:
+      - "9443:9443"
+    restart: unless-stopped
+
+  # ── Network Performance Tracking ───────────────────────────────
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/New_York
+      - APP_KEY=${SPEEDTEST_APP_KEY}
+      - APP_URL=${SPEEDTEST_APP_URL}
+      - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE=0 * * * *
+    volumes:
+      - ${MEDIA_PATH}/config/speedtest-tracker:/config
+    ports:
+      - "8081:80"
     restart: unless-stopped
