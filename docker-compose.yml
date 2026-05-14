@@ -160,6 +160,22 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # ── Queue & Download Cleanup ───────────────────────────────────
+  cleanuparr:
+    image: ghcr.io/cleanuparr/cleanuparr:latest
+    container_name: cleanuparr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/New_York
+      - PORT=11011
+    volumes:
+      - ${MEDIA_PATH}/config/cleanuparr:/config
+      - ${MEDIA_PATH}/downloads:/downloads
+    ports:
+      - "11011:11011"
+    restart: unless-stopped
+
   # ── Container Management ───────────────────────────────────────
   portainer:
     image: portainer/portainer-ce:latest

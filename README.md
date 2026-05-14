@@ -192,6 +192,7 @@ Use these values when creating apps in Homarr:
 | Sonarr       | `http://localhost:8989`                       | `http://sonarr:8989`           |
 | Radarr       | `http://localhost:7878`                       | `http://radarr:7878`           |
 | Jellyfin     | `http://localhost:8096`                       | `http://jellyfin:8096`         |
+| Cleanuparr   | `http://localhost:11011`                      | `http://cleanuparr:11011`      |
 
 If you open Homarr from another device on your network, replace `localhost` in the browser URL with your server's LAN IP or hostname.
 
@@ -213,7 +214,7 @@ If you open Homarr from another device on your network, replace `localhost` in t
 - Add New → search for movie → add with desired quality
 - Radarr will automatically search indexers and send to qBittorrent
 
-### Step 13: Watching
+### Step 14: Watching
 - Open Jellyfin at `http://localhost:8096` (or `http://<your-mac-ip>:8096` from other devices)
 - Libraries auto-detect new downloads after Sonarr/Radarr organize them
 - Use Jellyfin apps on phone/TV/browser to stream
@@ -235,6 +236,11 @@ If you open Homarr from another device on your network, replace `localhost` in t
 - **Jellyfin "server not available"**: remote access may be disabled — run:
   ```bash
   docker exec jellyfin sed -i 's|<EnableRemoteAccess>false|<EnableRemoteAccess>true|' /config/config/network.xml && docker restart jellyfin
+  ```
+- **To fully reset Jellyfin**: `docker stop jellyfin && rm -rf ~/media/config/jellyfin && docker start jellyfin`
+- **qBittorrent IP ban** from failed logins: `docker restart qbittorrent`
+- **VPN not connecting**: verify `VPN_WIREGUARD_KEY` in `.env` is the WireGuard **PrivateKey** from the Surfshark `.conf` (not the public key), and that `VPN_WIREGUARD_ADDRESSES` matches the `Address` line from the same `.conf`
+|<EnableRemoteAccess>true|' /config/config/network.xml && docker restart jellyfin
   ```
 - **To fully reset Jellyfin**: `docker stop jellyfin && rm -rf ~/media/config/jellyfin && docker start jellyfin`
 - **qBittorrent IP ban** from failed logins: `docker restart qbittorrent`
