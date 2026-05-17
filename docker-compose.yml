@@ -1,32 +1,37 @@
+networks:
+  default:
+    name: mediastack
+
 services:
-  # ── VPN Gateway (all traffic routed through Surfshark) ─────────
+
+  # ── VPN Gateway ────────────────────────────────────────────────
   gluetun:
-    image: qmcgaw/gluetun
+    image: qmcgaw/gluetun:v3.41.0
     container_name: gluetun
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    networks:
-      default:
-        aliases:
-          - prowlarr
-          - qbittorrent
-          - flaresolverr
     environment:
       - VPN_SERVICE_PROVIDER=surfshark
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${VPN_WIREGUARD_KEY}
       - WIREGUARD_ADDRESSES=${VPN_WIREGUARD_ADDRESSES}
+      - SERVER_HOSTNAMES=${VPN_SERVER_HOSTNAME}
+      - TZ=Asia/Kolkata
+      - UPDATER_PERIOD=0
+      - HEALTH_VPN_DURATION_INITIAL=30s
+      - HEALTH_VPN_DURATION_ADDITION=20s
+      - HTTP_CONTROL_SERVER_ADDRESS=:8001
+      - HEALTH_SUCCESS_WAIT_DURATION=5s
     ports:
-      # qBittorrent
-      - "8080:8080"
       - "6881:6881"
       - "6881:6881/udp"
-      # Prowlarr
-      - "9696:9696"
-      # FlareSolverr
-      - "8191:8191"
+      - "8080:8080" # qBittorrent
+      - "9696:9696" # Prowlarr
+      - "8191:8191" # FlareSolverr
+      - "5055:5055"
+      - "8001:8001"
     volumes:
       - ${MEDIA_PATH}/config/gluetun:/gluetun
     restart: unless-stopped
@@ -42,11 +47,17 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
       - WEBUI_PORT=8080
     volumes:
       - ${MEDIA_PATH}/config/qbittorrent:/config
       - ${MEDIA_PATH}/downloads:/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   # ── Indexer Manager (via VPN) ──────────────────────────────────
@@ -60,9 +71,15 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
     volumes:
       - ${MEDIA_PATH}/config/prowlarr:/config
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9696/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   # ── Cloudflare Bypass (via VPN) ────────────────────────────────
@@ -75,69 +92,75 @@ services:
         condition: service_healthy
     environment:
       - LOG_LEVEL=info
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8191/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   # ── TV Shows ───────────────────────────────────────────────────
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
+    ports:
+      - "8989:8989"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
     volumes:
       - ${MEDIA_PATH}/config/sonarr:/config
       - ${MEDIA_PATH}/tv:/tv
       - ${MEDIA_PATH}/downloads:/downloads
-    ports:
-      - "8989:8989"
     restart: unless-stopped
 
   # ── Movies ─────────────────────────────────────────────────────
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    ports:
+      - "7878:7878"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
     volumes:
       - ${MEDIA_PATH}/config/radarr:/config
       - ${MEDIA_PATH}/movies:/movies
       - ${MEDIA_PATH}/downloads:/downloads
-    ports:
-      - "7878:7878"
     restart: unless-stopped
 
   # ── Dashboard ──────────────────────────────────────────────────
   homarr:
     image: ghcr.io/homarr-labs/homarr:latest
     container_name: homarr
+    ports:
+      - "7575:7575"
     environment:
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
       - SECRET_ENCRYPTION_KEY=821955e611073dfb9200cf715dcb0f89b137de61010e1f00b4ae43e0b5f0cf73
     volumes:
       - ${MEDIA_PATH}/config/homarr:/appdata
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - "7575:7575"
+      - //var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
   # ── Media Streaming Server ─────────────────────────────────────
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
+    ports:
+      - "8096:8096"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
     volumes:
       - ${MEDIA_PATH}/config/jellyfin:/config
       - ${MEDIA_PATH}/movies:/data/movies
       - ${MEDIA_PATH}/tv:/data/tv
-    ports:
-      - "8096:8096"
     restart: unless-stopped
 
   # ── Request Management ─────────────────────────────────────────
@@ -145,64 +168,32 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     init: true
     container_name: seerr
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     environment:
       - LOG_LEVEL=info
-      - TZ=America/New_York
+      - TZ=Asia/Kolkata
     volumes:
       - ${MEDIA_PATH}/config/seerr:/app/config
-    ports:
-      - "5055:5055"
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/settings/public || exit 1
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5055/api/v1/settings/public"]
       start_period: 20s
       timeout: 3s
       interval: 15s
       retries: 3
     restart: unless-stopped
 
-  # ── Queue & Download Cleanup ───────────────────────────────────
-  cleanuparr:
-    image: ghcr.io/cleanuparr/cleanuparr:latest
-    container_name: cleanuparr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=America/New_York
-      - PORT=11011
-    volumes:
-      - ${MEDIA_PATH}/config/cleanuparr:/config
-      - ${MEDIA_PATH}/downloads:/downloads
-    ports:
-      - "11011:11011"
-    restart: unless-stopped
-
   # ── Container Management ───────────────────────────────────────
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
+    ports:
+      - "9000:9000"
     security_opt:
       - no-new-privileges:true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - //var/run/docker.sock:/var/run/docker.sock:ro
       - ${MEDIA_PATH}/config/portainer:/data
-    ports:
-      - "9443:9443"
-    restart: unless-stopped
-
-  # ── Network Performance Tracking ───────────────────────────────
-  speedtest-tracker:
-    image: lscr.io/linuxserver/speedtest-tracker:latest
-    container_name: speedtest-tracker
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=America/New_York
-      - APP_KEY=${SPEEDTEST_APP_KEY}
-      - APP_URL=${SPEEDTEST_APP_URL}
-      - DB_CONNECTION=sqlite
-      - SPEEDTEST_SCHEDULE=0 * * * *
-    volumes:
-      - ${MEDIA_PATH}/config/speedtest-tracker:/config
-    ports:
-      - "8081:80"
     restart: unless-stopped
