@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Widgets</title>
+<style>
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* ── defaults (override per widget below) ── */
+:root{
+  --widget-bg:    #2e2e2e;
+  --widget-color: var(--text-color, white);
+  --text-fz:      var(--mantine-font-size-md, 1rem);
+  --text-lh:      var(--mantine-line-height-md, 1.55);
+}
+
+body{
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-family:Inter,Arial,sans-serif;
+  background: var(--widget-bg);
+  color: var(--widget-color);
+}
+
+/* ── widget grid ────────────────────────── */
+#widgets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  justify-content:center;
+  align-items:center;
+}
+
+.widget{
+  text-align:center;
+  background: var(--widget-bg);
+  color: var(--widget-color);
+  -webkit-tap-highlight-color: transparent;
+  font-size: var(--text-fz);
+  line-height: var(--text-lh);
+}
+
+/* ── shared typography ──────────────────── */
+.widget-ip{
+  font-size:28px;
+  font-weight:700;
+}
+.widget-sub{
+  font-size:14px;
+  opacity:0.7;
+  margin-top:4px;
+}
+
+/* ── loading pulse ──────────────────────── */
+.loading{ animation:pulse 1.5s infinite; }
+@keyframes pulse{
+  0%,100%{ opacity:0.4 }
+  50%{ opacity:1 }
+}
+</style>
+</head>
+<body>
+
+<div id="widgets"></div>
+
+<!-- core framework (load first) -->
+<script src="core.js"></script>
+
+<!-- widget modules (add new ones here) -->
+<script src="modules/vpn.js"></script>
+
+</body>
+</html>
