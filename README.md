@@ -14,20 +14,64 @@ mkdir -p ~/media/{config,downloads,movies,tv}
 # 4. Start the stack (all traffic routed through Surfshark)
 docker compose up -d
 
-# 5. Open dashboard
+# 5. Open dashboard (see "LAN Access by Name" to reach it as http://stack)
 open http://localhost:7575
 ```
 
-## Services & Ports
+## LAN Access by Name
 
-| Service      | Port  | URL                          |
-|--------------|-------|------------------------------|
-| Homarr       | 7575  | http://localhost:7575        |
-| qBittorrent  | 8080  | http://localhost:8080        |
-| Prowlarr     | 9696  | http://localhost:9696        |
-| Sonarr       | 8989  | http://localhost:8989        |
-| Radarr       | 7878  | http://localhost:7878        |
-| Jellyfin     | 8096  | http://localhost:8096        |
+Services are reachable by hostname on port 80 via the `caddy` reverse proxy, so
+you never type a port. This needs two things.
+
+**1. A fixed IP on the Windows machine.** Hostnames are mapped to an address by
+hand, so that address must not move when the router restarts. On Windows:
+Settings -> Network & Internet -> Wi-Fi -> Hardware properties -> IP assignment
+-> Edit -> Manual -> IPv4 on.
+
+| Field       | Value           |
+|-------------|-----------------|
+| IP address  | `192.168.1.200`   |
+| Subnet mask | `255.255.255.0` |
+| Gateway     | `192.168.1.1`   |
+| DNS         | `192.168.1.1`   |
+
+**2. A hosts-file entry on each device you browse from.** Append this block to
+`/etc/hosts` (macOS/Linux, needs `sudo`) or
+`C:\Windows\System32\drivers\etc\hosts` (Windows, needs an admin editor):
+
+```
+192.168.1.200  stack
+192.168.1.200  stack.homarr
+192.168.1.200  stack.jellyfin
+192.168.1.200  stack.sonarr
+192.168.1.200  stack.radarr
+192.168.1.200  stack.prowlarr
+192.168.1.200  stack.qbit
+192.168.1.200  stack.seerr
+192.168.1.200  stack.portainer
+```
+
+Phones, tablets and TVs cannot edit a hosts file. Those keep using
+`192.168.1.200:<port>` from the table below; both routes work at the same time.
+
+To rename the `stack.` prefix, change it in `Caddyfile`, in the hosts block
+above, and in every hosts file, then `docker compose restart caddy`.
+
+## Services & URLs
+
+| Service      | By name                     | By IP + port          |
+|--------------|-----------------------------|-----------------------|
+| Homarr       | http://stack              | http://192.168.1.200:7575 |
+| Jellyfin     | http://stack.jellyfin     | http://192.168.1.200:8096 |
+| Sonarr       | http://stack.sonarr       | http://192.168.1.200:8989 |
+| Radarr       | http://stack.radarr       | http://192.168.1.200:7878 |
+| Prowlarr     | http://stack.prowlarr     | http://192.168.1.200:9696 |
+| qBittorrent  | http://stack.qbit         | http://192.168.1.200:8080 |
+| Seerr        | http://stack.seerr        | http://192.168.1.200:5055 |
+| Portainer    | http://stack.portainer    | http://192.168.1.200:9000 |
+
+Homarr is also served at `http://stack.homarr`. Point its dashboard tiles at
+the by-name URLs so they survive an IP change too.
 
 ## Storage Layout (~/media)
 - `~/media/downloads` — qBittorrent downloads
@@ -61,7 +105,7 @@ PGID=20
 
 # Storage for macOS/linux
 MEDIA_PATH=/Users/raven/media
-# On windows
+# On stack
 # MEDIA_PATH=C:\Users\raven\media or Z:\media
 ```
 

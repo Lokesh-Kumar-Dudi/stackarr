@@ -30,6 +30,12 @@ services:
       - "8001:8001"
     volumes:
       - ${MEDIA_PATH}/config/gluetun:/gluetun
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
     restart: unless-stopped
 
   # ── Download Client (via VPN) ──────────────────────────────────
@@ -40,6 +46,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -64,6 +71,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -86,6 +94,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true
     environment:
       - LOG_LEVEL=info
       - TZ=Asia/Kolkata
@@ -168,6 +177,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true
     environment:
       - LOG_LEVEL=info
       - TZ=Asia/Kolkata
@@ -194,3 +204,15 @@ services:
       - ${MEDIA_PATH}/config/portainer:/data
     restart: unless-stopped
   
+
+  # ── Reverse Proxy (LAN access by name) ─────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${MEDIA_PATH}/config/caddy/data:/data
+      - ${MEDIA_PATH}/config/caddy/config:/config
+    restart: unless-stopped

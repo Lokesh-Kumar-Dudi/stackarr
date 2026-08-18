@@ -1,0 +1,55 @@
+# Reverse proxy for LAN access by name instead of IP:port.
+#
+# Every name below must resolve to this machine on each client device —
+# see "LAN Access by Name" in README.md for the hosts-file block.
+# Names are plain HTTP: these are private LAN hostnames with no public
+# DNS, so there is no certificate to issue.
+{
+	auto_https off
+	admin off
+}
+
+# Homarr — dashboard, and the front door on the bare hostname
+http://stack, http://stack.homarr {
+	reverse_proxy homarr:7575
+}
+
+http://stack.jellyfin {
+	reverse_proxy jellyfin:8096
+}
+
+http://stack.sonarr {
+	reverse_proxy sonarr:8989
+}
+
+http://stack.radarr {
+	reverse_proxy radarr:7878
+}
+
+http://stack.portainer {
+	reverse_proxy portainer:9000
+}
+
+# The services below run inside gluetun's network namespace, so they are
+# reached at gluetun:<port> rather than by their own container name.
+
+http://stack.prowlarr {
+	reverse_proxy gluetun:9696
+}
+
+http://stack.seerr {
+	reverse_proxy gluetun:5055
+}
+
+# qBittorrent checks that the Origin header agrees with the Host header,
+# so the browser's Host must be passed through untouched (Caddy's default).
+# If it rejects the hostname, set WebUI -> "Server domains" to * in qBittorrent.
+http://stack.qbit {
+	# qBittorrent's compressed responses get aborted mid-transfer by Caddy
+	# (large stylesheets fail, small ones succeed), so ask upstream for
+	# identity encoding. NOTE: does not fully fix the WebUI - a subset of
+	# requests still fails per page load; unresolved as of 2026-08-18.
+	reverse_proxy gluetun:8080 {
+		header_up -Accept-Encoding
+	}
+}
